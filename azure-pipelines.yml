@@ -44,5 +44,5 @@ jobs:
     displayName: 'Publish Artifact'
     inputs:
       targetPath: '$(Build.ArtifactStagingDirectory)'
-      artifact: 'AppBuild'
+      artifact: 'drop'
       publishLocation: 'pipeline'
