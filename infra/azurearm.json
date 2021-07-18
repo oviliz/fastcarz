@@ -1,0 +1,207 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "region": {
+      "defaultValue": "gb",
+      "type": "string"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for the resources"
+      }
+    },
+    "environmentType": {
+      "defaultValue": "dv",
+      "type": "string",
+      "allowedValues": [
+        "dv",
+        "qa",
+        "pr"
+      ]
+    },
+    "serverfarm_sku_name": {
+      "type": "string",
+      "defaultValue": "F1",
+      "allowedValues": [
+        "F1",
+        "D1",
+        "B1",
+        "B2",
+        "B3",
+        "S1",
+        "S2",
+        "S3",
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "metadata": {
+        "description": "Describes plan's pricing tier and capacity. Check details at https://azure.microsoft.com/en-us/pricing/details/app-service/"
+      }
+    }
+  },
+  "variables": {
+    "projectName": "fastcarz",
+    "tenantId": "[subscription().tenantId]",
+    "environmentName": "[concat(variables('projectName'), '-az', parameters('region'), '-', parameters('environmentType'))]",
+    "serverfarmName": "[concat(variables('environmentName'), 'aps01')]",
+    "app01Name": "[concat(variables('environmentName'), 'app01')]",
+    "app02Name": "[concat(variables('environmentName'), 'app02')]",
+    "insightsName": "[concat(variables('environmentName'), 'ait01')]"
+  },
+  "resources": [
+    {
+      "name": "[variables('serverfarmName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[parameters('location')]",
+      "apiVersion": "2020-12-01",
+      "sku": {
+        "name": "[parameters('serverfarm_sku_name')]"
+      },
+      "tags": {
+        "displayName": "App Service Plan"
+      },
+      "properties": {
+        "name": "[variables('serverfarmName')]",
+        "numberOfWorkers": 1
+      }
+    },
+    {
+      "name": "[variables('app01Name')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[parameters('location')]",
+      "apiVersion": "2020-12-01",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('serverfarmName'))]"
+      ],
+      "tags": {
+        "[concat('hidden-related:', resourceId('Microsoft.Web/serverfarms', variables('serverfarmName')))]": "Resource",
+        "displayName": "FastCarzAPI"
+      },
+      "properties": {
+        "name": "[variables('app01Name')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('serverfarmName'))]",
+        "siteConfig": {
+          "netFrameworkVersion": "v5.0",
+          "use32BitWorkerProcess": true,
+          "alwaysOn": false,
+          "managedPipelineMode": "Integrated",
+          "winAuthAdminState": "0",
+          "winAuthTenantState": "0",
+          "customAppPoolIdentityAdminState": false,
+          "customAppPoolIdentityTenantState": false,
+          "loadBalancing": "LeastRequests",
+          "autoHealEnabled": false,
+          "cors": {
+            "allowedOrigins": [
+              "[concat('https://',variables('app02Name'),'.azurewebsites.net')]",
+              "[if(equals(parameters('environmentType'),'dv'), 'http://localhost:8080', '')]"
+            ]
+          },
+          "localMySqlEnabled": false,
+          "http20Enabled": true,
+          "minTlsVersion": "1.2",
+          "ftpsState": "Disabled"
+        },
+        "httpsOnly": "true"
+      },
+      "resources": [
+        {
+          "type": "config",
+          "name": "appsettings",
+          "apiVersion": "2020-12-01",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('app01Name'))]",
+            "[resourceId('Microsoft.Insights/components', variables('insightsName'))]"
+          ],
+          "properties": {
+            "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components',variables('insightsName'))).InstrumentationKey]"
+          }
+        }
+      ]
+    },
+    {
+      "name": "[variables('app02Name')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[parameters('location')]",
+      "apiVersion": "2020-12-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('serverfarmName'))]"
+      ],
+      "tags": {
+        "[concat('hidden-related:', resourceId('Microsoft.Web/serverfarms', variables('serverfarmName')))]": "Resource",
+        "displayName": "FastCarzAPP"
+      },
+      "properties": {
+        "name": "[variables('app02Name')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('serverfarmName'))]",
+        "siteConfig": {
+          "netFrameworkVersion": "v5.0",
+          "use32BitWorkerProcess": true,
+          "alwaysOn": false,
+          "managedPipelineMode": "Integrated",
+          "winAuthAdminState": "0",
+          "winAuthTenantState": "0",
+          "customAppPoolIdentityAdminState": false,
+          "customAppPoolIdentityTenantState": false,
+          "loadBalancing": "LeastRequests",
+          "autoHealEnabled": false,
+          "localMySqlEnabled": false,
+          "http20Enabled": true,
+          "minTlsVersion": "1.2",
+          "ftpsState": "Disabled"
+        },
+        "httpsOnly": "true"
+      },
+      "resources": [
+        {
+          "type": "config",
+          "name": "appsettings",
+          "apiVersion": "2020-12-01",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('app02Name'))]",
+            "[resourceId('Microsoft.Insights/components', variables('insightsName'))]"
+          ],
+          "properties": {
+            "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components',variables('insightsName'))).InstrumentationKey]"
+          }
+        }
+      ]
+    },
+    {
+      "name": "[variables('insightsName')]",
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02-preview",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "Application Insights"
+      },
+      "kind": "web",
+      "properties": {
+        "ApplicationId": "[variables('insightsName')]",
+        "Application_Type": "web",
+        "Flow_Type": "Redfield",
+        "Request_Source": "IbizaAIExtension",
+        "Name": "[variables('insightsName')]",
+        "TenantId": "[variables('tenantId')]"
+      }
+    }
+  ],
+  "outputs": {
+    "app01NameOut": {
+      "type": "string",
+      "value": "[variables('app01Name')]"
+    },
+    "app02NameOut": {
+      "type": "string",
+      "value": "[variables('app02Name')]"
+    }
+  }
+}
