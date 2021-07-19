@@ -159,7 +159,6 @@ stages:
   - template: ./templates/releasetasks.yaml
     parameters:
       environment: DEV
-      subscriptionId: $(subscriptionID)
 
 # Deploy to QA
 - stage: DeployToQA
@@ -176,7 +175,6 @@ stages:
   - template: ./templates/releasetasks.yaml
     parameters:
       environment: QA
-      subscriptionId: $(subscriptionID)
 
 # Deploy to Production
 - stage: DeployToPROD
@@ -193,4 +191,3 @@ stages:
   - template: ./templates/releasetasks.yaml
     parameters:
       environment: PROD
-      subscriptionId: $(subscriptionID)
