@@ -43,7 +43,7 @@ Explain the steps with configuration details.
 An Azure Resource Manager (ARM) template was created to define the Infrastructure as Code for hosting an Azure App Service Plan with two App Services (or Web Apps). This is located at [infra/azurearm.json](infra/azurearm.json). An Application Insights was also configured as it is usually the case with App Services.
 
 ## CI/CD
-Continous Integration and Delivery is achieved through a single Pipeline using the [cicd/azure-pipelines.yml](cicd/azure-pipelines.yml) YAML file. This was linked to in the Azure DevOps and defines build steps as well as the different environmental stages.
+Continous Integration and Delivery is achieved through a single Pipeline using the [cicd/azure-pipelines.yml](cicd/azure-pipelines.yml) YAML file. This was linked to in a new Azure DevOps Pipeline and defines build steps as well as the different environmental stages.
 
 Comments were added to the file to facilitate review and reading.
 
