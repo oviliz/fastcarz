@@ -144,7 +144,7 @@ stages:
 # Deployment Stages
 # Deploy to DEV
 - stage: DeployToDEV
-  displayName: 'Deploy to DEV'
+  displayName: 'DEV'
   # This stage has a condition that means it will only run if the build stage was successful and the pipeline is being run on the develop branch
   condition: and(succeeded(), eq(variables['isMaster'], True))
  
@@ -162,7 +162,7 @@ stages:
 
 # Deploy to QA
 - stage: DeployToQA
-  displayName: 'Deploy to QA'
+  displayName: 'QA'
   condition: and(succeeded(), eq(variables['isMaster'], True))
   # It will only run after deploying to DEV
   dependsOn:
@@ -178,7 +178,7 @@ stages:
 
 # Deploy to Production
 - stage: DeployToPROD
-  displayName: 'Deploy to Production'
+  displayName: 'PROD'
   condition: and(succeeded(), or(eq(variables['isMaster'], True), eq(variables['isHotfix'], True)))
   # It will only run after deploying to QA
   dependsOn:
