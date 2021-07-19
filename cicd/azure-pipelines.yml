@@ -1,0 +1,196 @@
+# Define the branches and paths which will trigger the Pipeline
+trigger:
+  batch: false
+  branches:
+    include:
+    - refs/heads/master
+  paths:
+    exclude:
+    - README.md
+
+# Schedule in case client wants to return to scheduled nightly triggers
+# schedules:
+#   - cron: "0 1 * * *"
+#     displayName: '1AM (UTC) schedule'
+#     branches:
+#       include:
+#       - refs/heads/master
+
+# Agent Pool
+pool:
+  name: Hosted Windows 2019 with VS2019
+
+# Parameters that can be modified when the Pipeline is run manually
+parameters:
+  - name: configuration
+    displayName: 'Configuration to run'
+    default: release
+    type: string
+    values:
+      - debug
+      - release
+
+# Pipeline level Variables
+variables: 
+  # Variables defined in a template, can be reused in multiple Pipelines
+  - template: ./templates/variables/branchvariables.yaml
+  # Variable group(s)
+  - group: FastCarz-DEV
+
+# A pipeline can contain 1 or more stages, and by default these run sequentially in the order in which they appear in the YAML
+# This behaviour can be overriden using the dependsOn condition to allow stages to run in parrallel
+stages:
+- stage: Build
+  # A Stage can contain 1 or more jobs, by default these run in parrallel (if enough build agents are available)
+  # This behaviour can be overriden using the dependsOn condition to force jobs to run in a specific order
+  jobs:
+  - job: API
+    cancelTimeoutInMinutes: 1
+    workspace: 
+      clean: all
+
+    # Job level Variable, can override Pipeline and Stage level Variables
+    variables:
+      - name: buildConfiguration
+        value: ${{ parameters.configuration }}
+
+    # A job can contain 1 or more steps, these will always run in the order in which they appear in the YAML
+    steps:
+
+    # Print all environment variables available to the build process
+    # Any Variable defined in the pipeline will also be available as an environment Variable which can be used by scripts
+    - task: PowerShell@2
+      displayName: 'Print environment variables'
+      inputs:
+        targetType: 'inline'
+        script: 'gci env:'
+
+    - task: UseDotNet@2
+      displayName: 'Use .NET Core SDK 5.x'
+      inputs:
+        version: 5.x
+    - task: DotNetCoreCLI@2
+      displayName: '.Net Restore'
+      inputs:
+        command: restore
+        projects: '**/*.csproj'
+    - task: DotNetCoreCLI@2
+      displayName: '.Net Build'
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        arguments: '--configuration $(buildConfiguration) -r win-x64'
+    - task: DotNetCoreCLI@2
+      displayName: '.Net Test'
+      inputs:
+        command: 'test'
+        projects: '**/*Test/*.csproj'
+        arguments: '--configuration $(buildConfiguration)'
+    - task: DotNetCoreCLI@2
+      displayName: '.Net Publish'
+      inputs:
+        command: publish
+        publishWebProjects: true
+        projects: '**/*.csproj'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) -r win-x64'
+        zipAfterPublish: true
+    - task: PublishPipelineArtifact@1
+      displayName: 'Create API Artifact'
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+        artifact: 'drop'
+        publishLocation: 'pipeline'
+
+  - job: Infrastructure
+    displayName: 'Infrastructure'
+    cancelTimeoutInMinutes: 1
+    pool:
+      name: Hosted Windows 2019 with VS2019
+    steps:
+    - checkout: self
+    - task: RunARMTTKTests@1
+      displayName: 'TTK Test'
+      inputs:
+        templatelocation: '$(System.DefaultWorkingDirectory)\infra'
+        resultLocation: '$(System.DefaultWorkingDirectory)\results'
+        skipTests: ''
+        mainTemplates: 'azurearm.json'
+        allTemplatesMain: false
+        cliOutputResults: true
+    - task: PublishTestResults@2
+      displayName: 'TTK Test Publish Results'
+      inputs:
+        testResultsFormat: 'NUnit'
+        testResultsFiles: '$(System.DefaultWorkingDirectory)\results\*-armttk.xml'
+      condition: always()
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'ARM Template Validation'
+      inputs:
+        azureResourceManagerConnection: '$(resourceGroupName)'
+        subscriptionId: '$(subscriptionId)'
+        resourceGroupName: '$(resourceGroupName)'
+        location: 'UK South'
+        csmFile: infra/azurearm.json
+        csmParametersFile:
+        overrideParameters:
+        deploymentMode: Validation
+    - task: PublishPipelineArtifact@1
+      displayName: 'Create Infrastructure Artifact'
+      inputs:
+        targetPath: '$(Build.Repository.LocalPath)/infra'
+        ArtifactName: infra
+        publishLocation: 'pipeline'
+
+# Deployment Stages
+# Deploy to DEV
+- stage: DeployToDEV
+  displayName: 'Deploy to DEV'
+  # This stage has a condition that means it will only run if the build stage was successful and the pipeline is being run on the develop branch
+  condition: and(succeeded(), eq(variables['isMaster'], True))
+ 
+  # Define Stage level Variables, these can override Pipeline level Variables
+  variables:
+    - group: FastCarz-DEV
+
+  jobs:
+  # The deployment job is defined in a template so it can be reused for all deployment stages. The process for deploying to all environments is the same
+  # so this helps to keep the pipeline DRY
+  # We can define parameters in the template to pass in environment / stage / job specific values
+  - template: ./templates/releasetasks.yaml
+    parameters:
+      environment: DEV
+      subscriptionId: $(subscriptionID)
+
+# Deploy to QA
+- stage: DeployToQA
+  displayName: 'Deploy to QA'
+  condition: and(succeeded(), eq(variables['isMaster'], True))
+  # It will only run after deploying to DEV
+  dependsOn:
+  - DeployToDEV
+
+  variables:
+    - group: FastCarz-QA
+
+  jobs:
+  - template: ./templates/releasetasks.yaml
+    parameters:
+      environment: QA
+      subscriptionId: $(subscriptionID)
+
+# Deploy to Production
+- stage: DeployToPROD
+  displayName: 'Deploy to Production'
+  condition: and(succeeded(), or(eq(variables['isMaster'], True), eq(variables['isHotfix'], True)))
+  # It will only run after deploying to QA
+  dependsOn:
+  - DeployToQA
+
+  variables:
+    - group: FastCarz-PROD
+
+  jobs:
+  - template: ./templates/releasetasks.yaml
+    parameters:
+      environment: PROD
+      subscriptionId: $(subscriptionID)
