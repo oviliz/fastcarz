@@ -18,22 +18,33 @@ Explain the steps with configuration details.
 
 ## Prerequisites
 - Azure Subscription with Resource Groups for each environment (DEV, QA and PROD) with relevant IAM permissions; multiple separate Subscriptions is an alternative
+
 ![Azure Resource Groups](readme/img/azureRGs.png)
+
 - Azure DevOps (ADO) Project with at least a Team of individuals with QA and PROD approval responsibilities
+
 - ADO Service Connections, one per Azure Resource Group (avoid granting general access to whole subscriptions!); to make life easier, name them after Resource Groups
+
 ![ADO Service Connections](readme/img/adoServiceConnections.png)
+
 - ADO Variable Groups, one per environment with respective Variables
+
 ![ADO Service Connections](readme/img/adoVarGroups.png)
+
 ![ADO Service Connections](readme/img/adoDevVars.png)
+
 - ADO Environments, with QA and PROD set to require approval from the defined Team
-![ADO Service Connections](readme/img/adoEnvs.png)
-![ADO Service Connections](readme/img/adoEnvsDevApprove.png)
+
+![ADO Environments](readme/img/adoEnvs.png)
+
+![ADO Environment Approvals](readme/img/adoEnvsDevApprove.png)
 
 ## IaC ARM
 An Azure Resource Manager (ARM) template was created to define the Infrastructure as Code for hosting an Azure App Service Plan with two App Services (or Web Apps). This is located at [infra/azurearm.json](infra/azurearm.json).
 
 ## CI/CD
 Continous Integration and Delivery is achieved through a single Pipeline using the [cicd/azure-pipelines.yml](cicd/azure-pipelines.yml) YAML file. This was linked to in the Azure DevOps and defines build steps as well as the different environmental stages.
+
 ![ADO Pipeline](readme/img/adoPipeline.png)
 
 The Pipeline file links to [cicd/templates/releasetasks.yaml](cicd/templates/releasetasks.yaml) to reuse a list of release tasks across all our environmental stages. Also, a set of shared branch Variables was defined in [cicd/templates/variables/branchvariables.yaml](cicd/templates/variables/branchvariables.yaml).
