@@ -38,7 +38,7 @@ jobs:
               csmParametersFile: ''
               overrideParameters: '-environmentType "$(environmentType)"'
               deploymentMode: 'Incremental'
-          - task: task: keesschollaart.arm-outputs.arm-outputs.ARM Outputs@6
+          - task: keesschollaart.arm-outputs.arm-outputs.ARM Outputs@6
             displayName: 'Get ARM Outputs'
             inputs:
               ConnectedServiceNameARM: '$(resourceGroupName)'
