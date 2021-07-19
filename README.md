@@ -54,3 +54,5 @@ The Pipeline file links to [cicd/templates/releasetasks.yaml](cicd/templates/rel
 - The build steps include building and testing the API code and creating an artifact (an eventual additional "Web" app would follow similar principles so work wasn't replicated for the sake of this exercise). The ARM template code is also tested and validated against the DEV Resource Group before deployment.
 - If none of the build steps fail, the deployment proceeds with processing the build artifacts to the DEV environment without any obstructions.
 - Upon successful deployment to the DEV environment, the assigned team would have to approve proceeding with the QA deployment and successively with PROD.
+
+![ADO Pipeline Flow](readme/img/adoPipelineFlow.png)
