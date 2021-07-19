@@ -1,0 +1,53 @@
+parameters:
+- name: environment
+  default: ''
+jobs:
+  - deployment: DeployAPI
+    displayName: Deploy API to ${{ parameters.environment }}
+    environment: ${{ parameters.environment }}
+    strategy:
+      runOnce:
+        on:
+          failure:
+            steps:
+              - task: PowerShell@2
+                inputs:
+                  targetType: 'inline'
+                  script: |
+                    Write-Host "Oh no! Something went wrong"
+          success:
+            steps:
+              - task: PowerShell@2
+                inputs:
+                  targetType: 'inline'
+                  script: |
+                    Write-Host "Oh yeah! Deployment successfull"
+        deploy:
+          steps:
+          - task: AzureResourceManagerTemplateDeployment@3
+            displayName: 'Create or Update hosting infrastructure'
+            inputs:
+              deploymentScope: 'Resource Group'
+              azureResourceManagerConnection: '$(resourceGroupName)'
+              subscriptionId: '$(subscriptionId)'
+              action: 'Create Or Update Resource Group'
+              resourceGroupName: '$(resourceGroupName)'
+              location: 'UK South'
+              templateLocation: 'Linked artifact'
+              csmFile: '$(Pipeline.Workspace)/infra/azurearm.json'
+              csmParametersFile: ''
+              overrideParameters: '-environmentType "$(environmentType)"'
+              deploymentMode: 'Incremental'
+          - task: task: keesschollaart.arm-outputs.arm-outputs.ARM Outputs@6
+            displayName: 'Get ARM Outputs'
+            inputs:
+              ConnectedServiceNameARM: '$(resourceGroupName)'
+              resourceGroupName: '$(resourceGroupName)'
+          - task: AzureWebApp@1
+            displayName: 'Deploy API'
+            inputs:
+              azureSubscription: '$(resourceGroupName)'
+              appType: 'webApp'
+              appName: '$(app01NameOut)'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+              deploymentMethod: 'auto'
