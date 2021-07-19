@@ -29,9 +29,9 @@ Explain the steps with configuration details.
 
 - ADO Variable Groups, one per environment with respective Variables
 
-![ADO Service Connections](readme/img/adoVarGroups.png)
+![ADO Variable Groups](readme/img/adoVarGroups.png)
 
-![ADO Service Connections](readme/img/adoDevVars.png)
+![ADO Variables](readme/img/adoDevVars.png)
 
 - ADO Environments, with QA and PROD set to require approval from the defined Team
 
