@@ -37,13 +37,15 @@ Explain the steps with configuration details.
 
 ![ADO Environments](readme/img/adoEnvs.png)
 
-![ADO Environment Approvals](readme/img/adoEnvsDevApprove.png)
+![ADO Environment Approvals](readme/img/adoEnvsQAapprove.png)
 
 ## IaC ARM
 An Azure Resource Manager (ARM) template was created to define the Infrastructure as Code for hosting an Azure App Service Plan with two App Services (or Web Apps). This is located at [infra/azurearm.json](infra/azurearm.json).
 
 ## CI/CD
 Continous Integration and Delivery is achieved through a single Pipeline using the [cicd/azure-pipelines.yml](cicd/azure-pipelines.yml) YAML file. This was linked to in the Azure DevOps and defines build steps as well as the different environmental stages.
+
+Comments were added to the file to facilitate review and reading.
 
 ![ADO Pipeline](readme/img/adoPipeline.png)
 
